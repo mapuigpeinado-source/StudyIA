@@ -2,8 +2,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.table.DefaultTableModel;
 
 public class StudyIA {
+
+    private static DefaultTableModel resultsModel;
 
     private static class Question {
         String text;
@@ -162,6 +165,15 @@ public class StudyIA {
                         "Score: " + correctCount + " out of " + total + "\n" +
                         "Percent: " + String.format("%.1f", percent) + "%"
         );
+
+        String unitForRow = "Any";
+        String dateForRow = "Today";
+        String scoreText = correctCount + " / " + total;
+        String percentText = String.format("%.1f%%", percent);
+
+        if (resultsModel != null) {
+            resultsModel.addRow(new Object[]{dateForRow, unitForRow, scoreText, percentText});
+        }
 
         currentQuestionIndex = -1;
         correctCount = 0;
@@ -448,9 +460,11 @@ public class StudyIA {
         panel.add(titleLabel, gbc);
 
         String[] columnNames = {"Date", "Unit", "Score", "Percent"};
-        Object[][] data = {};
+        if (resultsModel == null) {
+            resultsModel = new DefaultTableModel(columnNames, 0);
+        }
 
-        JTable resultsTable = new JTable(data, columnNames);
+        JTable resultsTable = new JTable(resultsModel);
         JScrollPane tableScroll = new JScrollPane(resultsTable);
 
         gbc.gridx = 0;
