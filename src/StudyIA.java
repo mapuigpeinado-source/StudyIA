@@ -4,47 +4,54 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.table.DefaultTableModel;
 
+import db.SampleData;
+import db.ModelSetup;
+import db.QuestionDatabase;
+
 public class StudyIA {
 
-    private static DefaultTableModel resultsModel;
-
     private static class Question {
+        String topic;
+        String difficulty;
         String text;
         String answer;
-        String[] hints;
+        String [] hints;
 
-        Question(String text, String answer, String[] hints) {
+        Question(String topic, String difficulty, String text, String answer, String[] hints) {
+            this.topic = topic;
+            this.difficulty = difficulty;
             this.text = text;
             this.answer = answer;
             this.hints = hints;
         }
     }
 
+    private static final List<Question> ALL_QUESTIONS = new ArrayList<>();
     private static final List<Question> QUIZ_QUESTIONS = new ArrayList<>();
+
+    private static int getCurrentQuestionIndex = -1;
+    private static int getCorrectCount = 0;
+    private static int currentHintIndex = 0;
+    private static boolean answeredThisQuestion = false;
+    }
+
+    private static DefaultTableModel resultsModel;
+
+    // Now using DB question type
+    private static final List<QuestionDatabase.StudyQuestion> QUIZ_QUESTIONS = new ArrayList<>();
     private static int currentQuestionIndex = -1;
     private static int correctCount = 0;
     private static int currentHintIndex = 0;
-
-    static {
-        QUIZ_QUESTIONS.add(new Question(
-                "What is 2 + 2?",
-                "4",
-                new String[]{"Add 2 and 2.", "2 + 2 = 4."}
-        ));
-        QUIZ_QUESTIONS.add(new Question(
-                "Solve: 2x = 10. What is x?",
-                "5",
-                new String[]{"Divide both sides by 2.", "10 / 2 = 5."}
-        ));
-        QUIZ_QUESTIONS.add(new Question(
-                "What is the area of a rectangle with length 3 and width 4?",
-                "12",
-                new String[]{"Use A = length × width.", "3 × 4 = 12."}
-        ));
-    }
+    private static boolean answeredThisQuestion = false;
 
     public static void main(String[] args) {
-        createAndShowGUI();
+
+        //ModelSetup.init();
+
+        // Run once to insert sample questions, then comment out to avoid duplicates
+        // SampleData.insertSampleQuestions();
+
+        SwingUtilities.invokeLater(StudyIA::createAndShowGUI);
     }
 
     private static void startQuiz(JComboBox<String> unitCombo,
@@ -54,11 +61,12 @@ public class StudyIA {
                                   JLabel progressLabel,
                                   JTextField answerField) {
 
+        String topic = (String) unitCombo.getSelectedItem();
+
         if (QUIZ_QUESTIONS.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "No questions available yet.");
+            JOptionPane.showMessageDialog(null, "No questions available for this topic.");
             return;
         }
-
         currentQuestionIndex = 0;
         correctCount = 0;
         currentHintIndex = 0;
@@ -77,7 +85,8 @@ public class StudyIA {
             return;
         }
 
-        Question q = QUIZ_QUESTIONS.get(currentQuestionIndex);
+        QuestionDatabase.StudyQuestion q = QUIZ_QUESTIONS.get(currentQuestionIndex);
+
         questionLabel.setText(q.text);
         hintLabel.setText("");
         currentHintIndex = 0;
@@ -100,24 +109,40 @@ public class StudyIA {
             return;
         }
 
-        Question q = QUIZ_QUESTIONS.get(currentQuestionIndex);
+        QuestionDatabase.StudyQuestion q = QUIZ_QUESTIONS.get(currentQuestionIndex);
         String correct = q.answer.trim();
 
-        if (userAnswer.equalsIgnoreCase(correct)) {
-            correctCount++;
-            JOptionPane.showMessageDialog(null, "Correct!");
-        } else {
-            JOptionPane.showMessageDialog(null, "Not quite. The correct answer is: " + correct);
+        if (answeredThisQuestion) {
+            JOptionPane.showMessageDialog(null, "You already answered this question.");
+            return;
         }
+
+       if (answeredThisQuestion) {
+           JOptionPane.showMessageDialog(null, "You already answered this question");
+           return;
+       }
+
+       if (userAnswer.equalsIgnoreCase(correct)) {
+           correctCount++;
+           JOptionPane.showMessageDialog(null, "Correct!");
+       } else {
+           JOptionPane.showMessageDialog(null, "Incorrect. Try using a hint.");
+       }
+
+        answeredThisQuestion = true;
     }
 
+    if (!answeredThisQuestion) {
+        JOptionPane.showMessageDialog(null, "Please answer the question before moving on.");
+        return;
+    }
     private static void showNextHint(JLabel hintLabel) {
         if (currentQuestionIndex < 0 || currentQuestionIndex >= QUIZ_QUESTIONS.size()) {
             JOptionPane.showMessageDialog(null, "Start the quiz first.");
             return;
         }
 
-        Question q = QUIZ_QUESTIONS.get(currentQuestionIndex);
+        QuestionDatabase.StudyQuestion q = QUIZ_QUESTIONS.get(currentQuestionIndex);
 
         if (q.hints == null || q.hints.length == 0) {
             hintLabel.setText("No hints available for this question.");
@@ -477,5 +502,4 @@ public class StudyIA {
         return panel;
     }
 }
-
 
