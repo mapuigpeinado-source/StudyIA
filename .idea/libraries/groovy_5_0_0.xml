@@ -31,6 +31,7 @@
       <root url="jar://$PROJECT_DIR$/lib/groovy-typecheckers-5.0.0.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/groovy-xml-5.0.0.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/groovy-5.0.0.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/sqlite-jdbc-3.51.2.0.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

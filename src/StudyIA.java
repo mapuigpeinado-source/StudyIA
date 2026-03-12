@@ -3,6 +3,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.table.DefaultTableModel;
+import java.util.Collections;
 
 import db.SampleData;
 import db.ModelSetup;
@@ -10,46 +11,91 @@ import db.QuestionDatabase;
 
 public class StudyIA {
 
-    private static class Question {
-        String topic;
-        String difficulty;
-        String text;
-        String answer;
-        String [] hints;
-
-        Question(String topic, String difficulty, String text, String answer, String[] hints) {
-            this.topic = topic;
-            this.difficulty = difficulty;
-            this.text = text;
-            this.answer = answer;
-            this.hints = hints;
-        }
-    }
-
-    private static final List<Question> ALL_QUESTIONS = new ArrayList<>();
-    private static final List<Question> QUIZ_QUESTIONS = new ArrayList<>();
-
-    private static int getCurrentQuestionIndex = -1;
-    private static int getCorrectCount = 0;
-    private static int currentHintIndex = 0;
-    private static boolean answeredThisQuestion = false;
-    }
-
     private static DefaultTableModel resultsModel;
 
-    // Now using DB question type
     private static final List<QuestionDatabase.StudyQuestion> QUIZ_QUESTIONS = new ArrayList<>();
+
     private static int currentQuestionIndex = -1;
     private static int correctCount = 0;
     private static int currentHintIndex = 0;
     private static boolean answeredThisQuestion = false;
 
+    private static String selectedTopic;
+    private static String selectedDifficulty;
+
+    private static int difficultyToNumber(String difficulty) {
+        if (difficulty.equals("Easy")) {
+            return 1;
+        } else if (difficulty.equals("Medium")) {
+            return 2;
+        } else {
+            return 3;
+        }
+    }
+    private static String[] getFormulasForTopic(String topic)  {
+
+        if (topic.equals("Algebra")) {
+            return new String[]{
+                    "x + a = b",
+                    "ax = b",
+                    "2(x + a)",
+                    "x / a = b"
+
+            };
+        } else if (topic.equals("Geometry")) {
+            return new String[]{
+                    "Area of triangle = 1/2 x base x height",
+                    "Area of rectangle = length x width",
+                    "Area of circle = pi x r x r",
+                    "Circumefernce = 2 x pi x r",
+                    "Angles in triangle = 180",
+                    "Area of rectangle = length x width"
+            };
+        } else if (topic.equals("Fractions")) {
+                return new String[]{
+                        "a/b + c/d = (ad + bc) / bd",
+                        "a/b - c/d = (ad - bc) / bd",
+                        "a/b x c/d = ac / bd",
+                        "a/b ÷ c/d = a/b x d/c"
+                };
+        }
+
+        return new String[]{};
+    }
+
+    private static String getFormulaExplanation(String formula) {
+        if (formula.equals("x + a = b")) {
+            return "To solve this, subtract a from both sides to find x.";
+        } else if (formula.equals("ax = b")) {
+            return "To solve this, divide both sides by a.";
+        } else if (formula.equals("Area of rectangle = length × width")) {
+            return "Multiply the length by the width to find the area.";
+        } else if (formula.equals("Area of triangle = 1/2 × base × height")) {
+            return "Multiply the base by the height, then divide by 2.";
+        } else if (formula.equals("Area of circle = pi × r × r")) {
+            return "Square the radius, then multiply by pi.";
+        } else if (formula.equals("Circumference = 2 × pi × r")) {
+            return "Multiply 2, pi, and the radius.";
+        } else if (formula.equals("Angles in triangle = 180")) {
+            return "The angles in a triangle always add up to 180 degrees.";
+        } else if (formula.equals("a/b + c/d = (ad + bc) / bd")) {
+            return "Find a common denominator, then add the numerators.";
+        } else if (formula.equals("a/b - c/d = (ad - bc) / bd")) {
+            return "Find a common denominator, then subtract the numerators.";
+        } else if (formula.equals("a/b × c/d = ac / bd")) {
+            return "Multiply the numerators and multiply the denominators.";
+        } else if (formula.equals("a/b ÷ c/d = a/b × d/c")) {
+            return "To divide fractions, multiply by the reciprocal.";
+        } else {
+            return "No explanation available.";
+        }
+    }
+
     public static void main(String[] args) {
 
-        //ModelSetup.init();
 
-        // Run once to insert sample questions, then comment out to avoid duplicates
-        // SampleData.insertSampleQuestions();
+        ModelSetup.init();
+        //SampleData.insertSampleQuestions();
 
         SwingUtilities.invokeLater(StudyIA::createAndShowGUI);
     }
@@ -62,14 +108,27 @@ public class StudyIA {
                                   JTextField answerField) {
 
         String topic = (String) unitCombo.getSelectedItem();
+        String difficultyText = (String) difficultyCombo.getSelectedItem();
+        int difficulty = difficultyToNumber(difficultyText);
+        selectedTopic = topic;
+        selectedDifficulty = difficultyText;
+
+        QUIZ_QUESTIONS.clear();
+        QUIZ_QUESTIONS.addAll(QuestionDatabase.getRandomQuestions(topic, difficulty, 5));
+        Collections.shuffle(QUIZ_QUESTIONS);
+
+        QUIZ_QUESTIONS.clear();
+        QUIZ_QUESTIONS.addAll(QuestionDatabase.getRandomQuestions(topic, difficulty, 5));
 
         if (QUIZ_QUESTIONS.isEmpty()) {
             JOptionPane.showMessageDialog(null, "No questions available for this topic.");
             return;
         }
+
         currentQuestionIndex = 0;
         correctCount = 0;
         currentHintIndex = 0;
+        answeredThisQuestion = false;
 
         showQuestion(questionLabel, hintLabel, progressLabel, answerField);
     }
@@ -80,7 +139,8 @@ public class StudyIA {
                                      JTextField answerField) {
 
         if (currentQuestionIndex < 0 || currentQuestionIndex >= QUIZ_QUESTIONS.size()) {
-            questionLabel.setText("No more questions. Click 'Finish Quiz'.");
+            questionLabel.setText("No more questions. Click Finish Quiz.");
+            hintLabel.setText("");
             progressLabel.setText("Progress: " + QUIZ_QUESTIONS.size() + " / " + QUIZ_QUESTIONS.size());
             return;
         }
@@ -89,8 +149,9 @@ public class StudyIA {
 
         questionLabel.setText(q.text);
         hintLabel.setText("");
-        currentHintIndex = 0;
         answerField.setText("");
+        currentHintIndex = 0;
+        answeredThisQuestion = false;
 
         progressLabel.setText("Progress: " + (currentQuestionIndex + 1) + " / " + QUIZ_QUESTIONS.size());
     }
@@ -103,39 +164,31 @@ public class StudyIA {
             return;
         }
 
+        if (answeredThisQuestion) {
+            JOptionPane.showMessageDialog(null, "You already answered this question.");
+            return;
+        }
+
         String userAnswer = answerField.getText().trim();
+
         if (userAnswer.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Please type an answer.");
             return;
         }
 
         QuestionDatabase.StudyQuestion q = QUIZ_QUESTIONS.get(currentQuestionIndex);
-        String correct = q.answer.trim();
+        String correctAnswer = q.answer.trim();
 
-        if (answeredThisQuestion) {
-            JOptionPane.showMessageDialog(null, "You already answered this question.");
-            return;
+        if (userAnswer.equalsIgnoreCase(correctAnswer)) {
+            correctCount++;
+            JOptionPane.showMessageDialog(null, "Correct!");
+        } else {
+            JOptionPane.showMessageDialog(null, "Incorrect. Try using a hint.");
         }
-
-       if (answeredThisQuestion) {
-           JOptionPane.showMessageDialog(null, "You already answered this question");
-           return;
-       }
-
-       if (userAnswer.equalsIgnoreCase(correct)) {
-           correctCount++;
-           JOptionPane.showMessageDialog(null, "Correct!");
-       } else {
-           JOptionPane.showMessageDialog(null, "Incorrect. Try using a hint.");
-       }
 
         answeredThisQuestion = true;
     }
 
-    if (!answeredThisQuestion) {
-        JOptionPane.showMessageDialog(null, "Please answer the question before moving on.");
-        return;
-    }
     private static void showNextHint(JLabel hintLabel) {
         if (currentQuestionIndex < 0 || currentQuestionIndex >= QUIZ_QUESTIONS.size()) {
             JOptionPane.showMessageDialog(null, "Start the quiz first.");
@@ -167,11 +220,16 @@ public class StudyIA {
             return;
         }
 
+        if (!answeredThisQuestion) {
+            JOptionPane.showMessageDialog(null, "Please answer the question before moving on.");
+            return;
+        }
+
         if (currentQuestionIndex < QUIZ_QUESTIONS.size() - 1) {
             currentQuestionIndex++;
             showQuestion(questionLabel, hintLabel, progressLabel, answerField);
         } else {
-            JOptionPane.showMessageDialog(null, "You are at the last question. Press 'Finish Quiz'.");
+            JOptionPane.showMessageDialog(null, "You are at the last question. Press Finish Quiz.");
         }
     }
 
@@ -191,7 +249,7 @@ public class StudyIA {
                         "Percent: " + String.format("%.1f", percent) + "%"
         );
 
-        String unitForRow = "Any";
+        String unitForRow = selectedTopic + "_" + selectedDifficulty;
         String dateForRow = "Today";
         String scoreText = correctCount + " / " + total;
         String percentText = String.format("%.1f%%", percent);
@@ -203,6 +261,7 @@ public class StudyIA {
         currentQuestionIndex = -1;
         correctCount = 0;
         currentHintIndex = 0;
+        answeredThisQuestion = false;
     }
 
     private static void createAndShowGUI() {
@@ -228,7 +287,6 @@ public class StudyIA {
         frame.add(titleLabel, gbc);
 
         JTabbedPane tabbedPane = new JTabbedPane();
-
         tabbedPane.addTab("Home", createHomePanel());
         tabbedPane.addTab("Quiz", createQuizPanel());
         tabbedPane.addTab("Formulas", createFormulasPanel());
@@ -259,7 +317,6 @@ public class StudyIA {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 1;
         panel.add(welcomeLabel, gbc);
 
         JTextArea infoArea = new JTextArea(
@@ -276,7 +333,6 @@ public class StudyIA {
 
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.gridwidth = 1;
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
@@ -294,7 +350,6 @@ public class StudyIA {
         JLabel unitLabel = new JLabel("Unit:");
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 1;
         panel.add(unitLabel, gbc);
 
         JComboBox<String> unitCombo = new JComboBox<>();
@@ -320,7 +375,6 @@ public class StudyIA {
         JLabel questionTitleLabel = new JLabel("Question:");
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.gridwidth = 1;
         panel.add(questionTitleLabel, gbc);
 
         JLabel questionLabel = new JLabel("");
@@ -423,7 +477,6 @@ public class StudyIA {
         JLabel unitLabel = new JLabel("Unit:");
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 1;
         panel.add(unitLabel, gbc);
 
         JComboBox<String> unitCombo = new JComboBox<>();
@@ -431,6 +484,10 @@ public class StudyIA {
         gbc.gridy = 0;
         gbc.gridwidth = 2;
         panel.add(unitCombo, gbc);
+
+        unitCombo.addItem("Algebra");
+        unitCombo.addItem("Geometry");
+        unitCombo.addItem("Fractions");
 
         JButton loadFormulasButton = new JButton("Show Formulas");
         gbc.gridx = 3;
@@ -464,6 +521,22 @@ public class StudyIA {
         gbc.fill = GridBagConstraints.BOTH;
         panel.add(detailsScroll, gbc);
 
+        loadFormulasButton.addActionListener(e -> {
+            String topic = (String) unitCombo.getSelectedItem();
+            String[] formulas = getFormulasForTopic(topic);
+            formulaList.setListData(formulas);
+            formulaDetails.setText("");
+
+            formulaList.addListSelectionListener(event ->{
+                if (!event.getValueIsAdjusting()) {
+                    String selectedFormula = formulaList.getSelectedValue();
+                    if(selectedFormula != null) {
+                        formulaDetails.setText(getFormulaExplanation(selectedFormula));
+                    }
+                }
+            });
+        });
+
         return panel;
     }
 
@@ -479,7 +552,6 @@ public class StudyIA {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 1;
         gbc.weightx = 1.0;
         gbc.weighty = 0.0;
         panel.add(titleLabel, gbc);
@@ -494,7 +566,6 @@ public class StudyIA {
 
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.gridwidth = 1;
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
         panel.add(tableScroll, gbc);
@@ -502,4 +573,3 @@ public class StudyIA {
         return panel;
     }
 }
-
